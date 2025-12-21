@@ -4,12 +4,6 @@ A CLI tool to download video, audio, and transcriptions from YouTube.
 
 <img width="800" src="./preview.gif" />
 
-## Demo
-
-![Demo](bubly-demo.gif)
-
-The demo GIF is automatically generated using [VHS](https://github.com/charmbracelet/vhs) in our GitHub Actions workflow.
-
 ## Features
 
 - Download YouTube videos
