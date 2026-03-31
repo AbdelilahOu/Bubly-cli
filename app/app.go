@@ -1,23 +1,10 @@
 package app
 
 import (
-	"fmt"
-
 	"github.com/AbdelilahOu/Bubly-cli-app/types"
 	"github.com/AbdelilahOu/Bubly-cli-app/utils"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/reflow/indent"
-	"github.com/muesli/termenv"
-)
-
-var (
-	term      = termenv.EnvColorProfile()
-	subtle    = makeFgStyle("241")
-	dot       = colorFg(" • ", "236")
-	help      = subtle("j/k, up/down: select") + dot + subtle("enter: choose") + dot + subtle("q, esc: quit") + dot + subtle("backspace: back")
-	highlight = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
 )
 
 type ViewsOptions struct {
@@ -47,6 +34,8 @@ type AppModel struct {
 	SubtitleSel          *SubtitleSelection
 	Page                 int
 	ItemsPerPage         int
+	Width                int
+	Height               int
 }
 
 func (m AppModel) Init() tea.Cmd {
@@ -58,6 +47,18 @@ func (m AppModel) Init() tea.Cmd {
 }
 
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.Width = msg.Width
+		m.Height = msg.Height
+		textareaWidth := viewWidth(m) - 24
+		if textareaWidth < 36 {
+			textareaWidth = 36
+		}
+		m.Textarea.SetWidth(textareaWidth)
+		return m, nil
+	}
+
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		k := msg.String()
 		if m.IsTextAreaActive {
@@ -92,18 +93,18 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m AppModel) View() string {
 	if m.Quitting {
-		return "" + TitleStyle("See you later! 👋") + ""
+		return renderShell(m, SuccessStyle("See you later! 👋"))
 	}
 
 	if m.CheckingYtdlp || m.InstallingYtdlp {
-		return YtdlpView(m)
+		return renderShell(m, YtdlpView(m))
 	}
 
-	s := YoutubeView(m)
+	content := YoutubeView(m)
 	if m.Warning != "" {
-		return indent.String(""+s+""+help+"\n"+WarningStyle(m.Warning), 2)
+		content += "\n\n" + WarningStyle(m.Warning)
 	}
-	return indent.String(""+s+""+help, 2)
+	return renderShell(m, content)
 }
 
 func UpdateYtdlp(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
@@ -164,11 +165,13 @@ func YtdlpView(m AppModel) string {
 
 	if m.CheckingYtdlp {
 		if m.InstallingYtdlp {
-			s += TitleStyle("Installing yt-dlp") + "\n\n"
-			s += "Please wait while yt-dlp is being installed...\n"
+			s += TitleStyle("Environment Setup") + "\n\n"
+			s += "Installing `yt-dlp` in local `bin/`...\n"
+			s += "This only needs to happen once.\n"
 		} else {
-			s += TitleStyle("yt-dlp is not installed") + "\n\n"
-			s += "Would you like to install it?\n\n"
+			s += TitleStyle("Environment Setup") + "\n\n"
+			s += "yt-dlp was not found in local `bin/`.\n"
+			s += "Install it now?\n\n"
 		}
 	} else {
 		return ""
@@ -181,7 +184,7 @@ func YtdlpView(m AppModel) string {
 		}
 	}
 
-	return indent.String(s+"\n"+help, 2)
+	return s
 }
 
 func destructureOptions(options []ViewsOptions, c int) []any {
@@ -194,9 +197,9 @@ func destructureOptions(options []ViewsOptions, c int) []any {
 
 func checkbox(label string, checked bool) string {
 	if checked {
-		return colorFg("[x] "+label, "212")
+		return selectedOptionStyle.Render("▶ " + label)
 	}
-	return fmt.Sprintf("[ ] %s", label)
+	return optionStyle.Render("  " + label)
 }
 
 func appendToHistory(m AppModel, s string) AppModel {
@@ -236,12 +239,4 @@ func removeFromHistory(m AppModel) AppModel {
 	m.Warning = ""
 
 	return m
-}
-
-func colorFg(val, color string) string {
-	return termenv.String(val).Foreground(term.Color(color)).String()
-}
-
-func makeFgStyle(color string) func(string) string {
-	return termenv.Style{}.Foreground(term.Color(color)).Styled
 }

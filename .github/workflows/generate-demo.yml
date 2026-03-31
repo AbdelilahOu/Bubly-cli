@@ -34,6 +34,12 @@ jobs:
           sudo apt install -y ttyd
           go install github.com/charmbracelet/vhs@latest
 
+      - name: Install yt-dlp for demo run
+        run: |
+          mkdir -p bin
+          curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" -o bin/yt-dlp
+          chmod +x bin/yt-dlp
+
       - name: Generate demo GIF
         run: |
           export PATH="$HOME/go/bin:$PATH"

@@ -8,6 +8,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+type spinnerTickMsg time.Time
+
+func spinnerTick() tea.Cmd {
+	return tea.Tick(120*time.Millisecond, func(t time.Time) tea.Msg {
+		return spinnerTickMsg(t)
+	})
+}
+
 var YoutubeOptions = []ViewsOptions{
 	{
 		View:        "yt-download-video",
@@ -76,7 +84,10 @@ func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 					m.AudioFormatSel.Selected = true
 					m.AudioFormatSel.Downloading = true
 					formatID := m.AudioFormatSel.Formats[m.AudioFormatSel.Choice].ID
-					return m, m.downloadAudio(m.AudioFormatSel.URL, formatID)
+					return m, tea.Batch(
+						m.downloadAudio(m.AudioFormatSel.URL, formatID),
+						spinnerTick(),
+					)
 				}
 				return m, nil
 			}
@@ -87,6 +98,11 @@ func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 				m.AudioFormatSel.ErrMsg = msg.Error
 			} else {
 				m.AudioFormatSel.Done = true
+			}
+			return m, nil
+		case spinnerTickMsg:
+			if m.AudioFormatSel.Downloading {
+				return m, spinnerTick()
 			}
 			return m, nil
 		}
@@ -144,7 +160,10 @@ func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 					m.VideoFormatSel.Selected = true
 					m.VideoFormatSel.Downloading = true
 					formatID := m.VideoFormatSel.Formats[m.VideoFormatSel.Choice].ID
-					return m, m.downloadVideo(m.VideoFormatSel.URL, formatID)
+					return m, tea.Batch(
+						m.downloadVideo(m.VideoFormatSel.URL, formatID),
+						spinnerTick(),
+					)
 				}
 				return m, nil
 			}
@@ -155,6 +174,11 @@ func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 				m.VideoFormatSel.ErrMsg = msg.Error
 			} else {
 				m.VideoFormatSel.Done = true
+			}
+			return m, nil
+		case spinnerTickMsg:
+			if m.VideoFormatSel.Downloading {
+				return m, spinnerTick()
 			}
 			return m, nil
 		}
@@ -212,7 +236,10 @@ func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 					m.SubtitleSel.Selected = true
 					m.SubtitleSel.Downloading = true
 					langCode := m.SubtitleSel.Languages[m.SubtitleSel.Choice].Code
-					return m, m.downloadSubtitles(m.SubtitleSel.URL, langCode)
+					return m, tea.Batch(
+						m.downloadSubtitles(m.SubtitleSel.URL, langCode),
+						spinnerTick(),
+					)
 				}
 				return m, nil
 			}
@@ -223,6 +250,11 @@ func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 				m.SubtitleSel.ErrMsg = msg.Error
 			} else {
 				m.SubtitleSel.Done = true
+			}
+			return m, nil
+		case spinnerTickMsg:
+			if m.SubtitleSel.Downloading {
+				return m, spinnerTick()
 			}
 			return m, nil
 		}
@@ -342,17 +374,16 @@ func YoutubeView(m AppModel) string {
 		case "yt-download-subtitles":
 			s.WriteString(DownloadSubtitlesView(m))
 		}
-		s.WriteString("\n\n")
 	} else {
-		s.WriteString(TitleStyle("What youtube tools do you wanna use? 🔨"))
+		s.WriteString(TitleStyle("Choose Your Workflow"))
 		s.WriteString("\n\n")
+		s.WriteString("Pick a mode to start downloading media.\n\n")
 
 		choices := fmt.Sprintf(
 			strings.Repeat("%s\n", len(YoutubeOptions)),
 			destructureOptions(YoutubeOptions, c)...,
 		)
-		s.WriteString(choices)
-		s.WriteString("\n")
+		s.WriteString(strings.TrimRight(choices, "\n"))
 	}
 
 	return s.String()
@@ -408,12 +439,15 @@ func DownloadVideoView(m AppModel) string {
 
 					line := fmt.Sprintf("%s%s %s %s %s",
 						cursor,
-						videoQualityStyle(format.Quality),
-						videoFormatStyle(format.Format),
-						videoResolutionStyle(format.Resolution),
-						videoFileSizeStyle(format.Filesize))
-
-					s.WriteString(line + "\n")
+						videoQualityStyle(fixedCol(format.Quality, 14)),
+						videoFormatStyle(fixedCol(format.Format, 10)),
+						videoResolutionStyle(fixedCol(format.Resolution, 16)),
+						videoFileSizeStyle(fixedCol(format.Filesize, 10)))
+					if m.VideoFormatSel.Choice == i {
+						s.WriteString(selectedOptionStyle.Render(line) + "\n")
+					} else {
+						s.WriteString(optionStyle.Render(line) + "\n")
+					}
 				}
 
 				if totalPages > 1 {
@@ -534,11 +568,14 @@ func DownloadAudioView(m AppModel) string {
 
 					line := fmt.Sprintf("%s%s %s %s",
 						cursor,
-						audioQualityStyle(format.Quality),
-						audioFormatStyle(format.Format),
-						audioFileSizeStyle(format.Filesize))
-
-					s.WriteString(line + "\n")
+						audioQualityStyle(fixedCol(format.Quality, 14)),
+						audioFormatStyle(fixedCol(format.Format, 12)),
+						audioFileSizeStyle(fixedCol(format.Filesize, 10)))
+					if m.AudioFormatSel.Choice == i {
+						s.WriteString(selectedOptionStyle.Render(line) + "\n")
+					} else {
+						s.WriteString(optionStyle.Render(line) + "\n")
+					}
 				}
 
 				if totalPages > 1 {
@@ -651,8 +688,11 @@ func DownloadSubtitlesView(m AppModel) string {
 					}
 
 					line := fmt.Sprintf("%s%s", cursor, subtitleLangStyle(lang.Name))
-
-					s.WriteString(line + "\n")
+					if m.SubtitleSel.Choice == i {
+						s.WriteString(selectedOptionStyle.Render(line) + "\n")
+					} else {
+						s.WriteString(optionStyle.Render(line) + "\n")
+					}
 				}
 
 				if totalPages > 1 {
@@ -721,4 +761,21 @@ func UpdateDownloadSubtitles(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	return m, tea.Batch(tiCmd)
+}
+
+func fixedCol(value string, width int) string {
+	if width <= 0 {
+		return value
+	}
+	runes := []rune(value)
+	if len(runes) > width {
+		if width == 1 {
+			return "…"
+		}
+		return string(runes[:width-1]) + "…"
+	}
+	if len(runes) < width {
+		return value + strings.Repeat(" ", width-len(runes))
+	}
+	return value
 }

@@ -15,16 +15,21 @@ func main() {
 	utils.ClearTerminal()
 
 	ta := textarea.New()
-	ta.Placeholder = "Pass in a url..."
+	ta.Placeholder = "Paste a YouTube URL and press Enter..."
 	ta.Focus()
 
-	ta.Prompt = "┃ "
+	ta.Prompt = "▶ "
 	ta.CharLimit = 280
 
-	ta.SetWidth(50)
+	ta.SetWidth(72)
 	ta.SetHeight(2)
 
 	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
+	ta.FocusedStyle.Prompt = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))
+	ta.FocusedStyle.Text = lipgloss.NewStyle().Foreground(lipgloss.Color("#111827"))
+	ta.FocusedStyle.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color("#9ca3af"))
+	ta.BlurredStyle.Text = lipgloss.NewStyle().Foreground(lipgloss.Color("#6b7280"))
+	ta.BlurredStyle.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color("#9ca3af"))
 
 	ta.ShowLineNumbers = false
 
