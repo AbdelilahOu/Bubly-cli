@@ -5,7 +5,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
+	"time"
 
 	"github.com/AbdelilahOu/Bubly-cli-app/types"
 	tea "github.com/charmbracelet/bubbletea"
@@ -58,11 +61,15 @@ func doInstallYtdlp() error {
 		return fmt.Errorf("unsupported OS")
 	}
 
-	resp, err := http.Get(url)
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(url)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to download yt-dlp: unexpected status %s", resp.Status)
+	}
 
 	var destPath string
 	if runtime.GOOS == "windows" {
@@ -87,8 +94,18 @@ func doInstallYtdlp() error {
 		return err
 	}
 
+	binPath, err := filepath.Abs("bin")
+	if err != nil {
+		return err
+	}
 	path := os.Getenv("PATH")
-	err = os.Setenv("PATH", "bin;"+path)
+	entries := strings.Split(path, string(os.PathListSeparator))
+	for _, entry := range entries {
+		if entry == binPath {
+			return nil
+		}
+	}
+	err = os.Setenv("PATH", binPath+string(os.PathListSeparator)+path)
 	if err != nil {
 		return err
 	}

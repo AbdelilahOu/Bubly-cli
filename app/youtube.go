@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -27,16 +26,6 @@ var YoutubeOptions = []ViewsOptions{
 func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 
 	if len(m.History) > 0 && m.History[0] == "yt-download-audio" && m.IsUrlWritten && m.AudioFormatSel != nil {
-
-		debugFile, _ := os.OpenFile("debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if debugFile != nil {
-			fmt.Fprintf(debugFile, "Handling audio format selection, IsUrlWritten: %t, AudioFormatSel != nil: %t\n", m.IsUrlWritten, m.AudioFormatSel != nil)
-			if m.AudioFormatSel != nil {
-				fmt.Fprintf(debugFile, "AudioFormatSel: Formats=%d, Choice=%d, Selected=%t\n", len(m.AudioFormatSel.Formats), m.AudioFormatSel.Choice, m.AudioFormatSel.Selected)
-			}
-			debugFile.Close()
-		}
-
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
@@ -267,13 +256,6 @@ func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case AudioFormatMsg:
-
-		debugFile, _ := os.OpenFile("debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if debugFile != nil {
-			fmt.Fprintf(debugFile, "Main UpdateYoutube received AudioFormatMsg, Error: %s, Formats count: %d\n", msg.Error, len(msg.Formats))
-			debugFile.Close()
-		}
-
 		if msg.Error != "" {
 			m.Warning = msg.Error
 			m.IsUrlWritten = false
@@ -507,19 +489,6 @@ func DownloadAudioView(m AppModel) string {
 	s.WriteString(TitleStyle("Download Youtube audio \U0001F3B5"))
 	s.WriteString("\n\n")
 
-	debugFile, _ := os.OpenFile("debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if debugFile != nil {
-		fmt.Fprintf(debugFile, "DownloadAudioView called, IsUrlWritten: %t\n", m.IsUrlWritten)
-		if m.AudioFormatSel != nil {
-			fmt.Fprintf(debugFile, "AudioFormatSel: Formats=%d, Choice=%d, Selected=%t, Downloading=%t, Done=%t, Error=%t\n",
-				len(m.AudioFormatSel.Formats), m.AudioFormatSel.Choice, m.AudioFormatSel.Selected,
-				m.AudioFormatSel.Downloading, m.AudioFormatSel.Done, m.AudioFormatSel.Error)
-		} else {
-			fmt.Fprintf(debugFile, "AudioFormatSel is nil\n")
-		}
-		debugFile.Close()
-	}
-
 	if m.IsUrlWritten {
 
 		if m.AudioFormatSel != nil {
@@ -611,24 +580,11 @@ func UpdateDownloadAudio(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 				m.Textarea.Reset()
 				m.IsUrlWritten = true
 				m.IsTextAreaActive = false
-
-				debugFile, _ := os.OpenFile("debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-				if debugFile != nil {
-					fmt.Fprintf(debugFile, "Calling fetchAudioFormats with URL: %s\n", m.Text)
-					debugFile.Close()
-				}
 				return m, m.fetchAudioFormats(m.Text)
 			}
 			return m, nil
 		}
 	case AudioFormatMsg:
-
-		debugFile, _ := os.OpenFile("debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if debugFile != nil {
-			fmt.Fprintf(debugFile, "Received AudioFormatMsg, Error: %s, Formats count: %d\n", msg.Error, len(msg.Formats))
-			debugFile.Close()
-		}
-
 		if msg.Error != "" {
 			m.Warning = msg.Error
 			m.IsUrlWritten = false

@@ -17,8 +17,7 @@ build:
 # Run the application
 .PHONY: run
 run:
-	make build-windows
-	./build/bubly.exe
+	go run main.go
 
 # Build for Windows
 .PHONY: build-windows
@@ -38,7 +37,11 @@ build-mac:
 # Clean build directory
 .PHONY: clean
 clean:
+ifeq ($(OS),Windows_NT)
+	powershell -NoProfile -Command "if (Test-Path '${BUILD_DIR}') { Remove-Item -Recurse -Force '${BUILD_DIR}' }"
+else
 	rm -rf ${BUILD_DIR}
+endif
 
 # Install dependencies
 .PHONY: deps

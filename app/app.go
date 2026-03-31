@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/AbdelilahOu/Bubly-cli-app/types"
@@ -117,8 +116,6 @@ type AppModel struct {
 	IsUrlWritten         bool
 	PrintingIsDone       bool
 	PrintingError        bool
-	CancelBackgroudJob   context.CancelFunc
-	IsBackgroundJob      bool
 	Warning              string
 	CheckingYtdlp        bool
 	InstallingYtdlp      bool
@@ -156,10 +153,6 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		if k == "backspace" && len(m.History) > 0 {
-			if m.IsBackgroundJob {
-				m.CancelBackgroudJob()
-				m.IsBackgroundJob = false
-			}
 			if m.Textarea.Value() == "" {
 				m.IsUrlWritten = false
 				m.PrintingError = false

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -67,36 +68,13 @@ func (m AppModel) fetchSubtitleLanguages(url string) tea.Cmd {
 
 		err = cmd.Run()
 
-		debugFile, _ := os.OpenFile("debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if debugFile != nil {
-			defer debugFile.Close()
-			fmt.Fprintf(debugFile, "Fetching subtitle languages for URL: %s\n", url)
-			fmt.Fprintf(debugFile, "Command executed, err: %v\n", err)
-			if err == nil {
-				output := outBuf.String()
-				fmt.Fprintf(debugFile, "Output length: %d\n", len(output))
-
-				if len(output) > 1000 {
-					fmt.Fprintf(debugFile, "Output (first 1000 chars): %s\n", output[:1000])
-				} else {
-					fmt.Fprintf(debugFile, "Output: %s\n", output)
-				}
-			} else {
-				fmt.Fprintf(debugFile, "Error output: %s\n", errBuf.String())
-			}
-		}
-
 		if err != nil {
 			return SubtitleLangMsg{Error: fmt.Sprintf("Error fetching subtitle languages: %v. Check output.log for details.", err)}
 		}
 
 		languages := ParseSubtitleLanguages(outBuf.String())
-
-		if debugFile != nil {
-			fmt.Fprintf(debugFile, "Parsed %d subtitle languages\n", len(languages))
-			for i, l := range languages {
-				fmt.Fprintf(debugFile, "Language %d: Code=%s, Name=%s\n", i, l.Code, l.Name)
-			}
+		if len(languages) == 0 {
+			return SubtitleLangMsg{Error: "No subtitles were found for this video."}
 		}
 
 		return SubtitleLangMsg{URL: url, Languages: languages}
@@ -111,7 +89,8 @@ func ParseSubtitleLanguages(output string) []SubtitleLanguage {
 
 	for _, line := range lines {
 
-		if strings.Contains(line, "Available automatic captions for") {
+		if strings.Contains(line, "Available subtitles for") ||
+			strings.Contains(line, "Available automatic captions for") {
 			parsingSubtitles = true
 			continue
 		}
@@ -189,13 +168,6 @@ func ParseSubtitleLanguages(output string) []SubtitleLanguage {
 		}
 	}
 
-	if len(languages) == 0 {
-		languages = append(languages, SubtitleLanguage{
-			Code: "en",
-			Name: "English",
-		})
-	}
-
 	return languages
 }
 
@@ -235,7 +207,8 @@ func (m AppModel) downloadSubtitles(url string, langCode string) tea.Cmd {
 		}
 
 		args = append(args, "--sleep-requests", "1", "--sleep-interval", "5", "--max-sleep-interval", "10")
-		args = append(args, "-o", "assets/subtitles.%(ext)s", url)
+		outputTemplate := fmt.Sprintf("assets/%d_%%(title).120B [%%(id)s].%%(ext)s", time.Now().Unix())
+		args = append(args, "-o", outputTemplate, url)
 
 		cmd := exec.Command(path, args...)
 		cmd.Stdout = io.MultiWriter(&outBuf, logFile)

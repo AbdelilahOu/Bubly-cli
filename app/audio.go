@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -72,37 +73,11 @@ func (m AppModel) fetchAudioFormats(url string) tea.Cmd {
 
 		err = cmd.Run()
 
-		debugFile, _ := os.OpenFile("debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if debugFile != nil {
-			defer debugFile.Close()
-			fmt.Fprintf(debugFile, "Fetching formats for URL: %s\n", url)
-			fmt.Fprintf(debugFile, "Command executed, err: %v\n", err)
-			if err == nil {
-				output := outBuf.String()
-				fmt.Fprintf(debugFile, "Output length: %d\n", len(output))
-
-				if len(output) > 1000 {
-					fmt.Fprintf(debugFile, "Output (first 1000 chars): %s\n", output[:1000])
-				} else {
-					fmt.Fprintf(debugFile, "Output: %s\n", output)
-				}
-			} else {
-				fmt.Fprintf(debugFile, "Error output: %s\n", errBuf.String())
-			}
-		}
-
 		if err != nil {
 			return AudioFormatMsg{Error: fmt.Sprintf("Error fetching formats: %v. Check output.log for details.", err)}
 		}
 
 		formats := ParseAudioFormats(outBuf.String())
-
-		if debugFile != nil {
-			fmt.Fprintf(debugFile, "Parsed %d formats\n", len(formats))
-			for i, f := range formats {
-				fmt.Fprintf(debugFile, "Format %d: ID=%s, Quality=%s\n", i, f.ID, f.Quality)
-			}
-		}
 
 		return AudioFormatMsg{URL: url, Formats: formats}
 	}
@@ -265,7 +240,8 @@ func (m AppModel) downloadAudio(url string, formatID string) tea.Cmd {
 		}
 
 		args = append(args, "--sleep-requests", "1", "--sleep-interval", "5", "--max-sleep-interval", "10")
-		args = append(args, "-o", "assets/audio.%(ext)s", url)
+		outputTemplate := fmt.Sprintf("assets/%d_%%(title).120B [%%(id)s].%%(ext)s", time.Now().Unix())
+		args = append(args, "-o", outputTemplate, url)
 
 		cmd := exec.Command(path, args...)
 		cmd.Stdout = io.MultiWriter(&outBuf, logFile)
@@ -284,7 +260,7 @@ func (m AppModel) downloadAudio(url string, formatID string) tea.Cmd {
 				}
 
 				args = append(args, "--sleep-requests", "1", "--sleep-interval", "5", "--max-sleep-interval", "10")
-				args = append(args, "-o", "assets/audio.%(ext)s", url)
+				args = append(args, "-o", outputTemplate, url)
 
 				cmd = exec.Command(path, args...)
 				cmd.Stdout = io.MultiWriter(&outBuf, logFile)
