@@ -3,7 +3,7 @@
 
 Output preview.gif
 
-Require go
+Require build/bubly
 
 Set FontSize 16
 Set Width 1000
@@ -17,37 +17,30 @@ Set WindowBarSize 40
 Set TypingSpeed 100ms
 
 # Start the app
-Type "go run main.go"
+Type "./build/bubly"
 Enter
 
 # Wait for the app to start
-Sleep 2s
-
-# Download ytdlp
-Enter
-
-# Wait for ytdlp to download
-Sleep 5s
+Sleep 4s
 
 # Navigate to "Download Youtube video" option and select it
-Down
 Enter
 
 # Wait for URL input prompt
-Sleep 1s
+Sleep 2s
 
 # Enter YouTube URL
 Type "https://www.youtube.com/watch?v=jNQXAC9IVRw"
 Enter
 
 # Wait for formats to load
-Sleep 5s
+Sleep 8s
 
 # Select first format
 Enter
 
 # Wait for download to complete
-Sleep 8s
+Sleep 10s
 
 # Go back to main menu
 Backspace
@@ -57,20 +50,20 @@ Down
 Enter
 
 # Wait for URL input prompt
-Sleep 1s
+Sleep 2s
 
 # Enter YouTube URL
 Type "https://www.youtube.com/watch?v=jNQXAC9IVRw"
 Enter
 
 # Wait for formats to load
-Sleep 5s
+Sleep 8s
 
 # Select first format
 Enter
 
 # Wait for download to complete
-Sleep 8s
+Sleep 10s
 
 # Go back to main menu
 Backspace
@@ -81,19 +74,20 @@ Down
 Enter
 
 # Wait for URL input prompt
-Sleep 1s
+Sleep 2s
 
 # Enter YouTube URL
-Type "https://www.youtube.com/watch?v=jNQXAC9IVRw" Enter
+Type "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+Enter
 
 # Wait for languages to load
-Sleep 5s
+Sleep 8s
 
 # Select first language
 Enter
 
 # Wait for download to complete
-Sleep 5s
+Sleep 8s
 
 # Quit the application
 Escape

@@ -24,6 +24,8 @@ jobs:
       - name: Install dependencies
         run: |
           go mod tidy
+          mkdir -p build
+          go build -o build/bubly main.go
 
       - name: Install VHS and dependencies
         run: |
@@ -34,6 +36,7 @@ jobs:
 
       - name: Generate demo GIF
         run: |
+          export PATH="$HOME/go/bin:$PATH"
           vhs < preview.tape
 
       - name: Upload demo GIF as artifact
