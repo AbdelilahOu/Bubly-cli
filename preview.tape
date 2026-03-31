@@ -30,7 +30,7 @@ Enter
 Sleep 2s
 
 # Enter YouTube URL
-Type "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+Type "https://www.youtube.com/watch?v=WqTO4uk1siU"
 Enter
 
 # Wait for formats to load
@@ -53,7 +53,7 @@ Enter
 Sleep 2s
 
 # Enter YouTube URL
-Type "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+Type "https://www.youtube.com/watch?v=WqTO4uk1siU"
 Enter
 
 # Wait for formats to load
@@ -77,7 +77,7 @@ Enter
 Sleep 2s
 
 # Enter YouTube URL
-Type "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+Type "https://www.youtube.com/watch?v=WqTO4uk1siU"
 Enter
 
 # Wait for languages to load
