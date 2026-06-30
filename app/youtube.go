@@ -485,7 +485,11 @@ func UpdateDownloadVideo(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyEnter:
 			if !m.IsUrlWritten {
-				m.Text = m.Textarea.Value()
+				url := strings.TrimSpace(m.Textarea.Value())
+				if url == "" {
+					return m, nil
+				}
+				m.Text = url
 				m.Textarea.Reset()
 				m.IsUrlWritten = true
 				m.IsTextAreaActive = false
@@ -613,7 +617,11 @@ func UpdateDownloadAudio(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyEnter:
 			if !m.IsUrlWritten {
-				m.Text = m.Textarea.Value()
+				url := strings.TrimSpace(m.Textarea.Value())
+				if url == "" {
+					return m, nil
+				}
+				m.Text = url
 				m.Textarea.Reset()
 				m.IsUrlWritten = true
 				m.IsTextAreaActive = false
@@ -730,7 +738,11 @@ func UpdateDownloadSubtitles(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyEnter:
 			if !m.IsUrlWritten {
-				m.Text = m.Textarea.Value()
+				url := strings.TrimSpace(m.Textarea.Value())
+				if url == "" {
+					return m, nil
+				}
+				m.Text = url
 				m.Textarea.Reset()
 				m.IsUrlWritten = true
 				m.IsTextAreaActive = false

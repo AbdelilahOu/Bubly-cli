@@ -25,9 +25,6 @@ type AppModel struct {
 	Warning              string
 	CheckingYtdlp        bool
 	InstallingYtdlp      bool
-	InstallationProgress int
-	InstallationTotal    int
-	InstallationMessage  string
 	YtdlpInstalled       bool
 	AudioFormatSel       *AudioFormatSelection
 	VideoFormatSel       *VideoFormatSelection
@@ -126,11 +123,6 @@ func UpdateYtdlp(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 		}
 		m.CheckingYtdlp = false
 		m.InstallingYtdlp = false
-		return m, nil
-	case types.ProgressMsg:
-		m.InstallationProgress = msg.Progress
-		m.InstallationTotal = msg.Total
-		m.InstallationMessage = msg.Message
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {

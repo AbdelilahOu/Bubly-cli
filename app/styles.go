@@ -20,10 +20,6 @@ var (
 				Background(lipgloss.Color("#7D56F4")).
 				Padding(0, 2)
 
-	headerSubtitleStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#6b7280")).
-				PaddingLeft(1)
-
 	sectionTitleStyle = lipgloss.NewStyle().
 				Bold(true).
 				Foreground(lipgloss.Color("#FAFAFA")).

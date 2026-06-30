@@ -2,9 +2,6 @@ package app
 
 import (
 	"fmt"
-	"io"
-	"os"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -32,50 +29,12 @@ type VideoFormatSelection struct {
 
 func (m AppModel) fetchVideoFormats(url string) tea.Cmd {
 	return func() tea.Msg {
-
-		os.MkdirAll("assets", 0755)
-
-		var path, ffmpegPath string
-		if isWindows() {
-			path = "bin/yt-dlp.exe"
-			ffmpegPath = "bin/ffmpeg.exe"
-		} else {
-			path = "bin/yt-dlp"
-			ffmpegPath = "bin/ffmpeg"
-		}
-
-		logFile, err := os.OpenFile("output.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if err != nil {
-			return VideoFormatMsg{Error: fmt.Sprintf("Error creating log file: %v", err)}
-		}
-		defer logFile.Close()
-
-		var outBuf, errBuf strings.Builder
-
-		_, err = os.Stat(ffmpegPath)
-		useFfmpeg := err == nil
-
-		var args []string
-		args = append(args, "-F", url)
-
-		if useFfmpeg {
-			args = append(args, "--ffmpeg-location", ffmpegPath)
-		} else {
-			// Add a warning to the log file if ffmpeg is not found
-			fmt.Fprintf(logFile, "Warning: ffmpeg not found. Some features may not work correctly.\n")
-		}
-
-		cmd := exec.Command(path, args...)
-		cmd.Stdout = io.MultiWriter(&outBuf, logFile)
-		cmd.Stderr = io.MultiWriter(&errBuf, logFile)
-
-		err = cmd.Run()
-
+		stdout, _, err := runYtdlp([]string{"-F", url})
 		if err != nil {
 			return VideoFormatMsg{Error: fmt.Sprintf("Error fetching formats: %v. Check output.log for details.", err)}
 		}
 
-		formats := ParseVideoFormats(outBuf.String())
+		formats := ParseVideoFormats(stdout)
 
 		return VideoFormatMsg{URL: url, Formats: formats}
 	}
@@ -177,68 +136,21 @@ func ParseVideoFormats(output string) []VideoFormat {
 
 func (m AppModel) downloadVideo(url string, formatID string) tea.Cmd {
 	return func() tea.Msg {
-
-		os.MkdirAll("assets", 0755)
-
-		var path, ffmpegPath string
-		if isWindows() {
-			path = "bin/yt-dlp.exe"
-			ffmpegPath = "bin/ffmpeg.exe"
-		} else {
-			path = "bin/yt-dlp"
-			ffmpegPath = "bin/ffmpeg"
-		}
-
-		logFile, err := os.OpenFile("output.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if err != nil {
-			return VideoDownloadMsg{Error: fmt.Sprintf("Error creating log file: %v", err)}
-		}
-		defer logFile.Close()
-
-		var outBuf, errBuf strings.Builder
-
-		_, err = os.Stat(ffmpegPath)
-		useFfmpeg := err == nil
-
-		var args []string
-		args = append(args, "-f", formatID)
-
-		if useFfmpeg {
-			args = append(args, "--ffmpeg-location", ffmpegPath)
-		} else {
-			// Add a warning to the log file if ffmpeg is not found
-			fmt.Fprintf(logFile, "Warning: ffmpeg not found. Some features may not work correctly.\n")
-		}
-
-		args = append(args, "--sleep-requests", "1", "--sleep-interval", "5", "--max-sleep-interval", "10")
 		outputTemplate := fmt.Sprintf("assets/%d_%%(title).120B [%%(id)s].%%(ext)s", time.Now().Unix())
+
+		args := []string{"-f", formatID}
+		args = append(args, throttleArgs...)
 		args = append(args, "-o", outputTemplate, url)
 
-		cmd := exec.Command(path, args...)
-		cmd.Stdout = io.MultiWriter(&outBuf, logFile)
-		cmd.Stderr = io.MultiWriter(&errBuf, logFile)
-		err = cmd.Run()
-
+		_, stderr, err := runYtdlp(args)
 		if err != nil {
-			errorOutput := errBuf.String()
 
-			if strings.Contains(errorOutput, "403") || strings.Contains(errorOutput, "Forbidden") {
+			if strings.Contains(stderr, "403") || strings.Contains(stderr, "Forbidden") {
+				retry := []string{"-f", "best"}
+				retry = append(retry, throttleArgs...)
+				retry = append(retry, "-o", outputTemplate, url)
 
-				args = []string{"-f", "best"}
-
-				if useFfmpeg {
-					args = append(args, "--ffmpeg-location", ffmpegPath)
-				}
-
-				args = append(args, "--sleep-requests", "1", "--sleep-interval", "5", "--max-sleep-interval", "10")
-				args = append(args, "-o", outputTemplate, url)
-
-				cmd = exec.Command(path, args...)
-				cmd.Stdout = io.MultiWriter(&outBuf, logFile)
-				cmd.Stderr = io.MultiWriter(&errBuf, logFile)
-				err = cmd.Run()
-
-				if err != nil {
+				if _, _, err = runYtdlp(retry); err != nil {
 					return VideoDownloadMsg{Error: fmt.Sprintf("Error downloading video: %v. Check output.log for details.", err)}
 				}
 			} else {

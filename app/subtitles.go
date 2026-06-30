@@ -2,9 +2,6 @@ package app
 
 import (
 	"fmt"
-	"io"
-	"os"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -29,50 +26,12 @@ type SubtitleSelection struct {
 
 func (m AppModel) fetchSubtitleLanguages(url string) tea.Cmd {
 	return func() tea.Msg {
-
-		os.MkdirAll("assets", 0755)
-
-		var path, ffmpegPath string
-		if isWindows() {
-			path = "bin/yt-dlp.exe"
-			ffmpegPath = "bin/ffmpeg.exe"
-		} else {
-			path = "bin/yt-dlp"
-			ffmpegPath = "bin/ffmpeg"
-		}
-
-		logFile, err := os.OpenFile("output.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if err != nil {
-			return SubtitleLangMsg{Error: fmt.Sprintf("Error creating log file: %v", err)}
-		}
-		defer logFile.Close()
-
-		var outBuf, errBuf strings.Builder
-
-		_, err = os.Stat(ffmpegPath)
-		useFfmpeg := err == nil
-
-		var args []string
-		args = append(args, "--list-subs", url)
-
-		if useFfmpeg {
-			args = append(args, "--ffmpeg-location", ffmpegPath)
-		} else {
-			// Add a warning to the log file if ffmpeg is not found
-			fmt.Fprintf(logFile, "Warning: ffmpeg not found. Some features may not work correctly.\n")
-		}
-
-		cmd := exec.Command(path, args...)
-		cmd.Stdout = io.MultiWriter(&outBuf, logFile)
-		cmd.Stderr = io.MultiWriter(&errBuf, logFile)
-
-		err = cmd.Run()
-
+		stdout, _, err := runYtdlp([]string{"--list-subs", url})
 		if err != nil {
 			return SubtitleLangMsg{Error: fmt.Sprintf("Error fetching subtitle languages: %v. Check output.log for details.", err)}
 		}
 
-		languages := ParseSubtitleLanguages(outBuf.String())
+		languages := ParseSubtitleLanguages(stdout)
 		if len(languages) == 0 {
 			return SubtitleLangMsg{Error: "No subtitles were found for this video."}
 		}
@@ -173,52 +132,15 @@ func ParseSubtitleLanguages(output string) []SubtitleLanguage {
 
 func (m AppModel) downloadSubtitles(url string, langCode string) tea.Cmd {
 	return func() tea.Msg {
-
-		os.MkdirAll("assets", 0755)
-
-		var path, ffmpegPath string
-		if isWindows() {
-			path = "bin/yt-dlp.exe"
-			ffmpegPath = "bin/ffmpeg.exe"
-		} else {
-			path = "bin/yt-dlp"
-			ffmpegPath = "bin/ffmpeg"
-		}
-
-		logFile, err := os.OpenFile("output.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if err != nil {
-			return SubtitleDownloadMsg{Error: fmt.Sprintf("Error creating log file: %v", err)}
-		}
-		defer logFile.Close()
-
-		var outBuf, errBuf strings.Builder
-
-		_, err = os.Stat(ffmpegPath)
-		useFfmpeg := err == nil
-
-		var args []string
-		args = append(args, "--write-sub", "--write-auto-sub", "--sub-lang", langCode, "--skip-download")
-
-		if useFfmpeg {
-			args = append(args, "--ffmpeg-location", ffmpegPath)
-		} else {
-			// Add a warning to the log file if ffmpeg is not found
-			fmt.Fprintf(logFile, "Warning: ffmpeg not found. Some features may not work correctly.\n")
-		}
-
-		args = append(args, "--sleep-requests", "1", "--sleep-interval", "5", "--max-sleep-interval", "10")
 		outputTemplate := fmt.Sprintf("assets/%d_%%(title).120B [%%(id)s].%%(ext)s", time.Now().Unix())
+
+		args := []string{"--write-sub", "--write-auto-sub", "--sub-lang", langCode, "--skip-download"}
+		args = append(args, throttleArgs...)
 		args = append(args, "-o", outputTemplate, url)
 
-		cmd := exec.Command(path, args...)
-		cmd.Stdout = io.MultiWriter(&outBuf, logFile)
-		cmd.Stderr = io.MultiWriter(&errBuf, logFile)
-		err = cmd.Run()
-
+		_, stderr, err := runYtdlp(args)
 		if err != nil {
-			errorOutput := errBuf.String()
-
-			if strings.Contains(errorOutput, "429") || strings.Contains(errorOutput, "Too Many Requests") {
+			if strings.Contains(stderr, "429") || strings.Contains(stderr, "Too Many Requests") {
 				return SubtitleDownloadMsg{Error: "Rate limited by YouTube. Please try again later."}
 			}
 			return SubtitleDownloadMsg{Error: fmt.Sprintf("Error downloading subtitles: %v. Check output.log for details.", err)}

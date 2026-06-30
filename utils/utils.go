@@ -25,17 +25,6 @@ func CheckYtdlp() bool {
 	return err == nil
 }
 
-func CheckFfmpeg() bool {
-	var path string
-	if runtime.GOOS == "windows" {
-		path = "bin/ffmpeg.exe"
-	} else {
-		path = "bin/ffmpeg"
-	}
-	_, err := os.Stat(path)
-	return err == nil
-}
-
 func InstallYtdlp() tea.Cmd {
 	return func() tea.Msg {
 		err := doInstallYtdlp()

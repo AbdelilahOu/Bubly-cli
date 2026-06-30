@@ -2,9 +2,6 @@ package app
 
 import (
 	"fmt"
-	"io"
-	"os"
-	"os/exec"
 	"regexp"
 	"sort"
 	"strconv"
@@ -34,50 +31,12 @@ type AudioFormatSelection struct {
 
 func (m AppModel) fetchAudioFormats(url string) tea.Cmd {
 	return func() tea.Msg {
-
-		os.MkdirAll("assets", 0755)
-
-		var path, ffmpegPath string
-		if isWindows() {
-			path = "bin/yt-dlp.exe"
-			ffmpegPath = "bin/ffmpeg.exe"
-		} else {
-			path = "bin/yt-dlp"
-			ffmpegPath = "bin/ffmpeg"
-		}
-
-		logFile, err := os.OpenFile("output.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if err != nil {
-			return AudioFormatMsg{Error: fmt.Sprintf("Error creating log file: %v", err)}
-		}
-		defer logFile.Close()
-
-		var outBuf, errBuf strings.Builder
-
-		_, err = os.Stat(ffmpegPath)
-		useFfmpeg := err == nil
-
-		var args []string
-		args = append(args, "-F", url)
-
-		if useFfmpeg {
-			args = append(args, "--ffmpeg-location", ffmpegPath)
-		} else {
-			// Add a warning to the log file if ffmpeg is not found
-			fmt.Fprintf(logFile, "Warning: ffmpeg not found. Some features may not work correctly.\n")
-		}
-
-		cmd := exec.Command(path, args...)
-		cmd.Stdout = io.MultiWriter(&outBuf, logFile)
-		cmd.Stderr = io.MultiWriter(&errBuf, logFile)
-
-		err = cmd.Run()
-
+		stdout, _, err := runYtdlp([]string{"-F", url})
 		if err != nil {
 			return AudioFormatMsg{Error: fmt.Sprintf("Error fetching formats: %v. Check output.log for details.", err)}
 		}
 
-		formats := ParseAudioFormats(outBuf.String())
+		formats := ParseAudioFormats(stdout)
 
 		return AudioFormatMsg{URL: url, Formats: formats}
 	}
@@ -206,68 +165,21 @@ func extractBitrate(quality string) int {
 
 func (m AppModel) downloadAudio(url string, formatID string) tea.Cmd {
 	return func() tea.Msg {
-
-		os.MkdirAll("assets", 0755)
-
-		var path, ffmpegPath string
-		if isWindows() {
-			path = "bin/yt-dlp.exe"
-			ffmpegPath = "bin/ffmpeg.exe"
-		} else {
-			path = "bin/yt-dlp"
-			ffmpegPath = "bin/ffmpeg"
-		}
-
-		logFile, err := os.OpenFile("output.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if err != nil {
-			return AudioDownloadMsg{Error: fmt.Sprintf("Error creating log file: %v", err)}
-		}
-		defer logFile.Close()
-
-		var outBuf, errBuf strings.Builder
-
-		_, err = os.Stat(ffmpegPath)
-		useFfmpeg := err == nil
-
-		var args []string
-		args = append(args, "-f", formatID, "-x", "--audio-quality", "0")
-
-		if useFfmpeg {
-			args = append(args, "--ffmpeg-location", ffmpegPath)
-		} else {
-			// Add a warning to the log file if ffmpeg is not found
-			fmt.Fprintf(logFile, "Warning: ffmpeg not found. Some features may not work correctly.\n")
-		}
-
-		args = append(args, "--sleep-requests", "1", "--sleep-interval", "5", "--max-sleep-interval", "10")
 		outputTemplate := fmt.Sprintf("assets/%d_%%(title).120B [%%(id)s].%%(ext)s", time.Now().Unix())
+
+		args := []string{"-f", formatID, "-x", "--audio-quality", "0"}
+		args = append(args, throttleArgs...)
 		args = append(args, "-o", outputTemplate, url)
 
-		cmd := exec.Command(path, args...)
-		cmd.Stdout = io.MultiWriter(&outBuf, logFile)
-		cmd.Stderr = io.MultiWriter(&errBuf, logFile)
-		err = cmd.Run()
-
+		_, stderr, err := runYtdlp(args)
 		if err != nil {
-			errorOutput := errBuf.String()
 
-			if strings.Contains(errorOutput, "403") || strings.Contains(errorOutput, "Forbidden") {
+			if strings.Contains(stderr, "403") || strings.Contains(stderr, "Forbidden") {
+				retry := []string{"-f", "bestaudio", "-x", "--audio-quality", "0"}
+				retry = append(retry, throttleArgs...)
+				retry = append(retry, "-o", outputTemplate, url)
 
-				args = []string{"-f", "bestaudio", "-x", "--audio-quality", "0"}
-
-				if useFfmpeg {
-					args = append(args, "--ffmpeg-location", ffmpegPath)
-				}
-
-				args = append(args, "--sleep-requests", "1", "--sleep-interval", "5", "--max-sleep-interval", "10")
-				args = append(args, "-o", outputTemplate, url)
-
-				cmd = exec.Command(path, args...)
-				cmd.Stdout = io.MultiWriter(&outBuf, logFile)
-				cmd.Stderr = io.MultiWriter(&errBuf, logFile)
-				err = cmd.Run()
-
-				if err != nil {
+				if _, _, err = runYtdlp(retry); err != nil {
 					return AudioDownloadMsg{Error: fmt.Sprintf("Error downloading audio: %v. Check output.log for details.", err)}
 				}
 			} else {
@@ -288,9 +200,4 @@ type AudioFormatMsg struct {
 type AudioDownloadMsg struct {
 	Done  bool
 	Error string
-}
-
-func isWindows() bool {
-	return strings.Contains(strings.ToLower(os.Getenv("OS")), "windows") ||
-		strings.HasSuffix(strings.ToLower(os.Getenv("PATH")), ".exe")
 }
