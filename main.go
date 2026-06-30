@@ -43,8 +43,6 @@ func main() {
 		Text:             "",
 		IsTextAreaActive: false,
 		IsUrlWritten:     false,
-		PrintingIsDone:   false,
-		PrintingError:    false,
 		CheckingYtdlp:    true,
 		Page:             0,
 		ItemsPerPage:     5,

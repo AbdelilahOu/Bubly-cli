@@ -20,8 +20,6 @@ type AppModel struct {
 	Text                 string
 	IsTextAreaActive     bool
 	IsUrlWritten         bool
-	PrintingIsDone       bool
-	PrintingError        bool
 	Warning              string
 	CheckingYtdlp        bool
 	InstallingYtdlp      bool
@@ -72,8 +70,6 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if k == "backspace" && len(m.History) > 0 {
 			if m.Textarea.Value() == "" {
 				m.IsUrlWritten = false
-				m.PrintingError = false
-				m.PrintingIsDone = false
 				m = removeFromHistory(m)
 			} else {
 				m.Text = m.Textarea.Value()[:len(m.Textarea.Value())-1]
@@ -226,8 +222,6 @@ func removeFromHistory(m AppModel) AppModel {
 	m.History = m.History[:len(m.History)-1]
 	m.Choice = 0
 
-	m.PrintingError = false
-	m.PrintingIsDone = false
 	m.Warning = ""
 
 	return m

@@ -1,10 +1,8 @@
 name: Generate Demo GIF
 
+# Manual only: YouTube blocks CI runners, so the gif is best generated locally
+# and committed. Run this from the Actions tab when you want CI to attempt it.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 jobs:

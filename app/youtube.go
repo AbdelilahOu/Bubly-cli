@@ -34,74 +34,31 @@ var YoutubeOptions = []ViewsOptions{
 func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 
 	if len(m.History) > 0 && m.History[0] == "yt-download-audio" && m.IsUrlWritten && m.AudioFormatSel != nil {
+		sel := m.AudioFormatSel
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			switch msg.String() {
-			case "j", "down":
-				if len(m.AudioFormatSel.Formats) > m.AudioFormatSel.Choice+1 {
-					m.AudioFormatSel.Choice++
-
-					itemsPerPage := m.ItemsPerPage
-					newPage := m.AudioFormatSel.Choice / itemsPerPage
-					if newPage != m.Page {
-						m.Page = newPage
-					}
-				}
-				return m, nil
-			case "k", "up":
-				if m.AudioFormatSel.Choice > 0 {
-					m.AudioFormatSel.Choice--
-
-					itemsPerPage := m.ItemsPerPage
-					newPage := m.AudioFormatSel.Choice / itemsPerPage
-					if newPage != m.Page {
-						m.Page = newPage
-					}
-				}
-				return m, nil
-			case "h", "left":
-
-				if m.Page > 0 {
-					m.Page--
-
-					itemsPerPage := m.ItemsPerPage
-					m.AudioFormatSel.Choice = m.Page * itemsPerPage
-				}
-				return m, nil
-			case "l", "right":
-
-				totalItems := len(m.AudioFormatSel.Formats)
-				itemsPerPage := m.ItemsPerPage
-				totalPages := (totalItems + itemsPerPage - 1) / itemsPerPage
-				if m.Page < totalPages-1 {
-					m.Page++
-
-					m.AudioFormatSel.Choice = m.Page * itemsPerPage
-				}
-				return m, nil
-			case "enter":
-				if !m.AudioFormatSel.Selected {
-					m.AudioFormatSel.Selected = true
-					m.AudioFormatSel.Downloading = true
-					formatID := m.AudioFormatSel.Formats[m.AudioFormatSel.Choice].ID
-					return m, tea.Batch(
-						m.downloadAudio(m.AudioFormatSel.URL, formatID),
-						spinnerTick(),
-					)
-				}
+			if c, p, ok := moveSelection(msg.String(), sel.Choice, len(sel.Formats), m.Page, m.ItemsPerPage); ok {
+				sel.Choice, m.Page = c, p
 				return m, nil
 			}
+			if msg.String() == "enter" && !sel.Selected {
+				sel.Selected = true
+				sel.Downloading = true
+				formatID := sel.Formats[sel.Choice].ID
+				return m, tea.Batch(m.downloadAudio(sel.URL, formatID), spinnerTick())
+			}
+			return m, nil
 		case AudioDownloadMsg:
-			m.AudioFormatSel.Downloading = false
+			sel.Downloading = false
 			if msg.Error != "" {
-				m.AudioFormatSel.Error = true
-				m.AudioFormatSel.ErrMsg = msg.Error
+				sel.Error = true
+				sel.ErrMsg = msg.Error
 			} else {
-				m.AudioFormatSel.Done = true
+				sel.Done = true
 			}
 			return m, nil
 		case spinnerTickMsg:
-			if m.AudioFormatSel.Downloading {
+			if sel.Downloading {
 				return m, spinnerTick()
 			}
 			return m, nil
@@ -110,74 +67,31 @@ func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 	}
 
 	if len(m.History) > 0 && m.History[0] == "yt-download-video" && m.IsUrlWritten && m.VideoFormatSel != nil {
+		sel := m.VideoFormatSel
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			switch msg.String() {
-			case "j", "down":
-				if len(m.VideoFormatSel.Formats) > m.VideoFormatSel.Choice+1 {
-					m.VideoFormatSel.Choice++
-
-					itemsPerPage := m.ItemsPerPage
-					newPage := m.VideoFormatSel.Choice / itemsPerPage
-					if newPage != m.Page {
-						m.Page = newPage
-					}
-				}
-				return m, nil
-			case "k", "up":
-				if m.VideoFormatSel.Choice > 0 {
-					m.VideoFormatSel.Choice--
-
-					itemsPerPage := m.ItemsPerPage
-					newPage := m.VideoFormatSel.Choice / itemsPerPage
-					if newPage != m.Page {
-						m.Page = newPage
-					}
-				}
-				return m, nil
-			case "h", "left":
-
-				if m.Page > 0 {
-					m.Page--
-
-					itemsPerPage := m.ItemsPerPage
-					m.VideoFormatSel.Choice = m.Page * itemsPerPage
-				}
-				return m, nil
-			case "l", "right":
-
-				totalItems := len(m.VideoFormatSel.Formats)
-				itemsPerPage := m.ItemsPerPage
-				totalPages := (totalItems + itemsPerPage - 1) / itemsPerPage
-				if m.Page < totalPages-1 {
-					m.Page++
-
-					m.VideoFormatSel.Choice = m.Page * itemsPerPage
-				}
-				return m, nil
-			case "enter":
-				if !m.VideoFormatSel.Selected {
-					m.VideoFormatSel.Selected = true
-					m.VideoFormatSel.Downloading = true
-					formatID := m.VideoFormatSel.Formats[m.VideoFormatSel.Choice].ID
-					return m, tea.Batch(
-						m.downloadVideo(m.VideoFormatSel.URL, formatID),
-						spinnerTick(),
-					)
-				}
+			if c, p, ok := moveSelection(msg.String(), sel.Choice, len(sel.Formats), m.Page, m.ItemsPerPage); ok {
+				sel.Choice, m.Page = c, p
 				return m, nil
 			}
+			if msg.String() == "enter" && !sel.Selected {
+				sel.Selected = true
+				sel.Downloading = true
+				formatID := sel.Formats[sel.Choice].ID
+				return m, tea.Batch(m.downloadVideo(sel.URL, formatID), spinnerTick())
+			}
+			return m, nil
 		case VideoDownloadMsg:
-			m.VideoFormatSel.Downloading = false
+			sel.Downloading = false
 			if msg.Error != "" {
-				m.VideoFormatSel.Error = true
-				m.VideoFormatSel.ErrMsg = msg.Error
+				sel.Error = true
+				sel.ErrMsg = msg.Error
 			} else {
-				m.VideoFormatSel.Done = true
+				sel.Done = true
 			}
 			return m, nil
 		case spinnerTickMsg:
-			if m.VideoFormatSel.Downloading {
+			if sel.Downloading {
 				return m, spinnerTick()
 			}
 			return m, nil
@@ -186,74 +100,31 @@ func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 	}
 
 	if len(m.History) > 0 && m.History[0] == "yt-download-subtitles" && m.IsUrlWritten && m.SubtitleSel != nil {
+		sel := m.SubtitleSel
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			switch msg.String() {
-			case "j", "down":
-				if len(m.SubtitleSel.Languages) > m.SubtitleSel.Choice+1 {
-					m.SubtitleSel.Choice++
-
-					itemsPerPage := m.ItemsPerPage
-					newPage := m.SubtitleSel.Choice / itemsPerPage
-					if newPage != m.Page {
-						m.Page = newPage
-					}
-				}
-				return m, nil
-			case "k", "up":
-				if m.SubtitleSel.Choice > 0 {
-					m.SubtitleSel.Choice--
-
-					itemsPerPage := m.ItemsPerPage
-					newPage := m.SubtitleSel.Choice / itemsPerPage
-					if newPage != m.Page {
-						m.Page = newPage
-					}
-				}
-				return m, nil
-			case "h", "left":
-
-				if m.Page > 0 {
-					m.Page--
-
-					itemsPerPage := m.ItemsPerPage
-					m.SubtitleSel.Choice = m.Page * itemsPerPage
-				}
-				return m, nil
-			case "l", "right":
-
-				totalItems := len(m.SubtitleSel.Languages)
-				itemsPerPage := m.ItemsPerPage
-				totalPages := (totalItems + itemsPerPage - 1) / itemsPerPage
-				if m.Page < totalPages-1 {
-					m.Page++
-
-					m.SubtitleSel.Choice = m.Page * itemsPerPage
-				}
-				return m, nil
-			case "enter":
-				if !m.SubtitleSel.Selected {
-					m.SubtitleSel.Selected = true
-					m.SubtitleSel.Downloading = true
-					langCode := m.SubtitleSel.Languages[m.SubtitleSel.Choice].Code
-					return m, tea.Batch(
-						m.downloadSubtitles(m.SubtitleSel.URL, langCode),
-						spinnerTick(),
-					)
-				}
+			if c, p, ok := moveSelection(msg.String(), sel.Choice, len(sel.Languages), m.Page, m.ItemsPerPage); ok {
+				sel.Choice, m.Page = c, p
 				return m, nil
 			}
+			if msg.String() == "enter" && !sel.Selected {
+				sel.Selected = true
+				sel.Downloading = true
+				langCode := sel.Languages[sel.Choice].Code
+				return m, tea.Batch(m.downloadSubtitles(sel.URL, langCode), spinnerTick())
+			}
+			return m, nil
 		case SubtitleDownloadMsg:
-			m.SubtitleSel.Downloading = false
+			sel.Downloading = false
 			if msg.Error != "" {
-				m.SubtitleSel.Error = true
-				m.SubtitleSel.ErrMsg = msg.Error
+				sel.Error = true
+				sel.ErrMsg = msg.Error
 			} else {
-				m.SubtitleSel.Done = true
+				sel.Done = true
 			}
 			return m, nil
 		case spinnerTickMsg:
-			if m.SubtitleSel.Downloading {
+			if sel.Downloading {
 				return m, spinnerTick()
 			}
 			return m, nil
@@ -291,14 +162,12 @@ func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 		if msg.Error != "" {
 			m.Warning = msg.Error
 			m.IsUrlWritten = false
-			m.PrintingError = true
 		} else {
 			m.AudioFormatSel = &AudioFormatSelection{
 				URL:     msg.URL,
 				Formats: msg.Formats,
 				Choice:  0,
 			}
-
 			m.Page = 0
 		}
 		return m, nil
@@ -306,14 +175,12 @@ func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 		if msg.Error != "" {
 			m.Warning = msg.Error
 			m.IsUrlWritten = false
-			m.PrintingError = true
 		} else {
 			m.VideoFormatSel = &VideoFormatSelection{
 				URL:     msg.URL,
 				Formats: msg.Formats,
 				Choice:  0,
 			}
-
 			m.Page = 0
 		}
 		return m, nil
@@ -321,42 +188,30 @@ func UpdateYoutube(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 		if msg.Error != "" {
 			m.Warning = msg.Error
 			m.IsUrlWritten = false
-			m.PrintingError = true
 		} else {
 			m.SubtitleSel = &SubtitleSelection{
 				URL:       msg.URL,
 				Languages: msg.Languages,
 				Choice:    0,
 			}
-
 			m.Page = 0
 		}
 		return m, nil
 	case AudioDownloadMsg:
 		if msg.Error != "" {
-			m.PrintingError = true
 			m.Warning = msg.Error
-		} else {
-			m.PrintingIsDone = true
 		}
 		return m, nil
 	case VideoDownloadMsg:
 		if msg.Error != "" {
-			m.PrintingError = true
 			m.Warning = msg.Error
-		} else {
-			m.PrintingIsDone = true
 		}
 		return m, nil
 	case SubtitleDownloadMsg:
 		if msg.Error != "" {
-			m.PrintingError = true
 			m.Warning = msg.Error
-		} else {
-			m.PrintingIsDone = true
 		}
 		return m, nil
-
 	}
 	return m, nil
 }
@@ -394,83 +249,39 @@ func DownloadVideoView(m AppModel) string {
 	s.WriteString(TitleStyle("Download Youtube video 📥"))
 	s.WriteString("\n\n")
 
-	if m.IsUrlWritten {
-
-		if m.VideoFormatSel != nil {
-			if m.VideoFormatSel.Error {
-				s.WriteString(ErrorStyle("Error: " + m.VideoFormatSel.ErrMsg))
-			} else if m.VideoFormatSel.Done {
-				s.WriteString(SuccessStyle("Video downloaded successfully! Check assets folder"))
-			} else if m.VideoFormatSel.Downloading {
-
-				s.WriteString("📥 Downloading video")
-
-				spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
-				frame := time.Now().UnixNano() / 100000000 % int64(len(spinner))
-				s.WriteString(" " + spinner[frame] + "\n")
-				s.WriteString("This may take a few moments...")
-			} else if len(m.VideoFormatSel.Formats) > 0 {
-				s.WriteString("Select video format:\n\n")
-
-				totalItems := len(m.VideoFormatSel.Formats)
-				itemsPerPage := m.ItemsPerPage
-				totalPages := (totalItems + itemsPerPage - 1) / itemsPerPage
-				currentPage := m.Page
-
-				if currentPage >= totalPages {
-					currentPage = totalPages - 1
-				}
-				if currentPage < 0 {
-					currentPage = 0
-				}
-
-				startIdx := currentPage * itemsPerPage
-				endIdx := startIdx + itemsPerPage
-				if endIdx > totalItems {
-					endIdx = totalItems
-				}
-
-				for i := startIdx; i < endIdx; i++ {
-					format := m.VideoFormatSel.Formats[i]
-					cursor := "  "
-					if m.VideoFormatSel.Choice == i {
-						cursor = "> "
-					}
-
-					line := fmt.Sprintf("%s%s %s %s %s",
-						cursor,
-						videoQualityStyle(fixedCol(format.Quality, 14)),
-						videoFormatStyle(fixedCol(format.Format, 10)),
-						videoResolutionStyle(fixedCol(format.Resolution, 16)),
-						videoFileSizeStyle(fixedCol(format.Filesize, 10)))
-					if m.VideoFormatSel.Choice == i {
-						s.WriteString(selectedOptionStyle.Render(line) + "\n")
-					} else {
-						s.WriteString(optionStyle.Render(line) + "\n")
-					}
-				}
-
-				if totalPages > 1 {
-					s.WriteString("\n")
-					s.WriteString(fmt.Sprintf("Page %d of %d | ", currentPage+1, totalPages))
-					if currentPage > 0 {
-						s.WriteString("<-- Previous (h) ")
-					}
-					if currentPage < totalPages-1 {
-						s.WriteString("Next (l) -->")
-					}
-				}
-
-				s.WriteString("\n\n(Press ↑/↓ to select, Enter to download, h/l for pagination)")
-			} else {
-				s.WriteString("Loading available formats...")
-			}
-		} else {
-
-			s.WriteString("Fetching available video formats for: " + m.Text + "\n")
-		}
-	} else {
+	if !m.IsUrlWritten {
 		s.WriteString(m.Textarea.View())
+		return s.String()
+	}
+
+	sel := m.VideoFormatSel
+	if sel == nil {
+		s.WriteString("Fetching available video formats for: " + m.Text + "\n")
+		return s.String()
+	}
+
+	switch {
+	case sel.Error:
+		s.WriteString(ErrorStyle("Error: " + sel.ErrMsg))
+	case sel.Done:
+		s.WriteString(SuccessStyle("Video downloaded successfully! Check assets folder"))
+	case sel.Downloading:
+		s.WriteString("📥 Downloading video " + downloadSpinner() + "\n")
+		s.WriteString("This may take a few moments...")
+	case len(sel.Formats) > 0:
+		s.WriteString("Select video format:\n\n")
+		lines := make([]string, len(sel.Formats))
+		for i, format := range sel.Formats {
+			lines[i] = fmt.Sprintf("%s %s %s %s",
+				videoQualityStyle(fixedCol(format.Quality, 14)),
+				videoFormatStyle(fixedCol(format.Format, 10)),
+				videoResolutionStyle(fixedCol(format.Resolution, 16)),
+				videoFileSizeStyle(fixedCol(format.Filesize, 10)))
+		}
+		renderSelectList(&s, lines, sel.Choice, m.Page, m.ItemsPerPage)
+		s.WriteString("\n\n(Press ↑/↓ to select, Enter to download, h/l for pagination)")
+	default:
+		s.WriteString("Loading available formats...")
 	}
 	return s.String()
 }
@@ -500,7 +311,6 @@ func UpdateDownloadVideo(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 		}
 	case VideoFormatMsg:
 		if msg.Error != "" {
-			m.PrintingError = true
 			m.Warning = msg.Error
 		} else {
 			m.VideoFormatSel = &VideoFormatSelection{
@@ -512,10 +322,7 @@ func UpdateDownloadVideo(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 		return m, nil
 	case VideoDownloadMsg:
 		if msg.Error != "" {
-			m.PrintingError = true
 			m.Warning = msg.Error
-		} else {
-			m.PrintingIsDone = true
 		}
 		return m, nil
 	}
@@ -527,82 +334,38 @@ func DownloadAudioView(m AppModel) string {
 	s.WriteString(TitleStyle("Download Youtube audio \U0001F3B5"))
 	s.WriteString("\n\n")
 
-	if m.IsUrlWritten {
-
-		if m.AudioFormatSel != nil {
-			if m.AudioFormatSel.Error {
-				s.WriteString(ErrorStyle("Error: " + m.AudioFormatSel.ErrMsg))
-			} else if m.AudioFormatSel.Done {
-				s.WriteString(SuccessStyle("Audio downloaded successfully! Check assets folder"))
-			} else if m.AudioFormatSel.Downloading {
-
-				s.WriteString("🔊 Downloading audio")
-
-				spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
-				frame := time.Now().UnixNano() / 100000000 % int64(len(spinner))
-				s.WriteString(" " + spinner[frame] + "\n")
-				s.WriteString("This may take a few moments...")
-			} else if len(m.AudioFormatSel.Formats) > 0 {
-				s.WriteString("Select audio format:\n\n")
-
-				totalItems := len(m.AudioFormatSel.Formats)
-				itemsPerPage := m.ItemsPerPage
-				totalPages := (totalItems + itemsPerPage - 1) / itemsPerPage
-				currentPage := m.Page
-
-				if currentPage >= totalPages {
-					currentPage = totalPages - 1
-				}
-				if currentPage < 0 {
-					currentPage = 0
-				}
-
-				startIdx := currentPage * itemsPerPage
-				endIdx := startIdx + itemsPerPage
-				if endIdx > totalItems {
-					endIdx = totalItems
-				}
-
-				for i := startIdx; i < endIdx; i++ {
-					format := m.AudioFormatSel.Formats[i]
-					cursor := "  "
-					if m.AudioFormatSel.Choice == i {
-						cursor = "> "
-					}
-
-					line := fmt.Sprintf("%s%s %s %s",
-						cursor,
-						audioQualityStyle(fixedCol(format.Quality, 14)),
-						audioFormatStyle(fixedCol(format.Format, 12)),
-						audioFileSizeStyle(fixedCol(format.Filesize, 10)))
-					if m.AudioFormatSel.Choice == i {
-						s.WriteString(selectedOptionStyle.Render(line) + "\n")
-					} else {
-						s.WriteString(optionStyle.Render(line) + "\n")
-					}
-				}
-
-				if totalPages > 1 {
-					s.WriteString("\n")
-					s.WriteString(fmt.Sprintf("Page %d of %d | ", currentPage+1, totalPages))
-					if currentPage > 0 {
-						s.WriteString("<-- Previous (h) ")
-					}
-					if currentPage < totalPages-1 {
-						s.WriteString("Next (l) -->")
-					}
-				}
-
-				s.WriteString("\n\n(Press \u2191/\u2193 to select, Enter to download, h/l for pagination)")
-			} else {
-				s.WriteString("Loading available formats...")
-			}
-		} else {
-
-			s.WriteString("Fetching available audio formats for: " + m.Text + "\n")
-		}
-	} else {
+	if !m.IsUrlWritten {
 		s.WriteString(m.Textarea.View())
+		return s.String()
+	}
+
+	sel := m.AudioFormatSel
+	if sel == nil {
+		s.WriteString("Fetching available audio formats for: " + m.Text + "\n")
+		return s.String()
+	}
+
+	switch {
+	case sel.Error:
+		s.WriteString(ErrorStyle("Error: " + sel.ErrMsg))
+	case sel.Done:
+		s.WriteString(SuccessStyle("Audio downloaded successfully! Check assets folder"))
+	case sel.Downloading:
+		s.WriteString("🔊 Downloading audio " + downloadSpinner() + "\n")
+		s.WriteString("This may take a few moments...")
+	case len(sel.Formats) > 0:
+		s.WriteString("Select audio format:\n\n")
+		lines := make([]string, len(sel.Formats))
+		for i, format := range sel.Formats {
+			lines[i] = fmt.Sprintf("%s %s %s",
+				audioQualityStyle(fixedCol(format.Quality, 14)),
+				audioFormatStyle(fixedCol(format.Format, 12)),
+				audioFileSizeStyle(fixedCol(format.Filesize, 10)))
+		}
+		renderSelectList(&s, lines, sel.Choice, m.Page, m.ItemsPerPage)
+		s.WriteString("\n\n(Press ↑/↓ to select, Enter to download, h/l for pagination)")
+	default:
+		s.WriteString("Loading available formats...")
 	}
 	return s.String()
 }
@@ -633,7 +396,6 @@ func UpdateDownloadAudio(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 		if msg.Error != "" {
 			m.Warning = msg.Error
 			m.IsUrlWritten = false
-			m.PrintingError = true
 		} else {
 			m.AudioFormatSel = &AudioFormatSelection{
 				URL:     msg.URL,
@@ -651,79 +413,36 @@ func DownloadSubtitlesView(m AppModel) string {
 	s.WriteString(TitleStyle("Download Youtube subtitles \U0001F4DD"))
 	s.WriteString("\n\n")
 
-	if m.IsUrlWritten {
-
-		if m.SubtitleSel != nil {
-			if m.SubtitleSel.Error {
-				s.WriteString(ErrorStyle("Error: " + m.SubtitleSel.ErrMsg))
-			} else if m.SubtitleSel.Done {
-				s.WriteString(SuccessStyle("Subtitles downloaded successfully! Check assets folder"))
-			} else if m.SubtitleSel.Downloading {
-
-				selectedLang := m.SubtitleSel.Languages[m.SubtitleSel.Choice].Name
-				s.WriteString("📝 Downloading " + selectedLang + " subtitles")
-
-				spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
-				frame := time.Now().UnixNano() / 100000000 % int64(len(spinner))
-				s.WriteString(" " + spinner[frame] + "\n")
-				s.WriteString("This may take a few moments...")
-			} else if len(m.SubtitleSel.Languages) > 0 {
-				s.WriteString("Select subtitle language:\n\n")
-
-				totalItems := len(m.SubtitleSel.Languages)
-				itemsPerPage := m.ItemsPerPage
-				totalPages := (totalItems + itemsPerPage - 1) / itemsPerPage
-				currentPage := m.Page
-
-				if currentPage >= totalPages {
-					currentPage = totalPages - 1
-				}
-				if currentPage < 0 {
-					currentPage = 0
-				}
-
-				startIdx := currentPage * itemsPerPage
-				endIdx := startIdx + itemsPerPage
-				if endIdx > totalItems {
-					endIdx = totalItems
-				}
-
-				for i := startIdx; i < endIdx; i++ {
-					lang := m.SubtitleSel.Languages[i]
-					cursor := "  "
-					if m.SubtitleSel.Choice == i {
-						cursor = "> "
-					}
-
-					line := fmt.Sprintf("%s%s", cursor, subtitleLangStyle(lang.Name))
-					if m.SubtitleSel.Choice == i {
-						s.WriteString(selectedOptionStyle.Render(line) + "\n")
-					} else {
-						s.WriteString(optionStyle.Render(line) + "\n")
-					}
-				}
-
-				if totalPages > 1 {
-					s.WriteString("\n")
-					s.WriteString(fmt.Sprintf("Page %d of %d | ", currentPage+1, totalPages))
-					if currentPage > 0 {
-						s.WriteString("<-- Previous (h) ")
-					}
-					if currentPage < totalPages-1 {
-						s.WriteString("Next (l) -->")
-					}
-				}
-
-				s.WriteString("\n\n(Press ↑/↓ to select, Enter to download, h/l for pagination)")
-			} else {
-				s.WriteString("Loading available languages...")
-			}
-		} else {
-
-			s.WriteString("Fetching available subtitle languages for: " + m.Text + "\n")
-		}
-	} else {
+	if !m.IsUrlWritten {
 		s.WriteString(m.Textarea.View())
+		return s.String()
+	}
+
+	sel := m.SubtitleSel
+	if sel == nil {
+		s.WriteString("Fetching available subtitle languages for: " + m.Text + "\n")
+		return s.String()
+	}
+
+	switch {
+	case sel.Error:
+		s.WriteString(ErrorStyle("Error: " + sel.ErrMsg))
+	case sel.Done:
+		s.WriteString(SuccessStyle("Subtitles downloaded successfully! Check assets folder"))
+	case sel.Downloading:
+		selectedLang := sel.Languages[sel.Choice].Name
+		s.WriteString("📝 Downloading " + selectedLang + " subtitles " + downloadSpinner() + "\n")
+		s.WriteString("This may take a few moments...")
+	case len(sel.Languages) > 0:
+		s.WriteString("Select subtitle language:\n\n")
+		lines := make([]string, len(sel.Languages))
+		for i, lang := range sel.Languages {
+			lines[i] = subtitleLangStyle(lang.Name)
+		}
+		renderSelectList(&s, lines, sel.Choice, m.Page, m.ItemsPerPage)
+		s.WriteString("\n\n(Press ↑/↓ to select, Enter to download, h/l for pagination)")
+	default:
+		s.WriteString("Loading available languages...")
 	}
 	return s.String()
 }
@@ -753,7 +472,6 @@ func UpdateDownloadSubtitles(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 		}
 	case SubtitleLangMsg:
 		if msg.Error != "" {
-			m.PrintingError = true
 			m.Warning = msg.Error
 		} else {
 			m.SubtitleSel = &SubtitleSelection{
@@ -765,14 +483,90 @@ func UpdateDownloadSubtitles(msg tea.Msg, m AppModel) (tea.Model, tea.Cmd) {
 		return m, nil
 	case SubtitleDownloadMsg:
 		if msg.Error != "" {
-			m.PrintingError = true
 			m.Warning = msg.Error
-		} else {
-			m.PrintingIsDone = true
 		}
 		return m, nil
 	}
 	return m, tea.Batch(tiCmd)
+}
+
+func moveSelection(key string, choice, count, page, perPage int) (newChoice, newPage int, ok bool) {
+	if perPage < 1 {
+		perPage = 1
+	}
+	switch key {
+	case "j", "down":
+		if choice+1 < count {
+			choice++
+		}
+	case "k", "up":
+		if choice > 0 {
+			choice--
+		}
+	case "h", "left":
+		if page > 0 {
+			page--
+			choice = page * perPage
+		}
+		return choice, page, true
+	case "l", "right":
+		totalPages := (count + perPage - 1) / perPage
+		if page < totalPages-1 {
+			page++
+			choice = page * perPage
+		}
+		return choice, page, true
+	default:
+		return choice, page, false
+	}
+	return choice, choice / perPage, true
+}
+
+func renderSelectList(s *strings.Builder, lines []string, choice, page, perPage int) {
+	if perPage < 1 {
+		perPage = 1
+	}
+	total := len(lines)
+	totalPages := (total + perPage - 1) / perPage
+	if page >= totalPages {
+		page = totalPages - 1
+	}
+	if page < 0 {
+		page = 0
+	}
+
+	start := page * perPage
+	end := start + perPage
+	if end > total {
+		end = total
+	}
+
+	for i := start; i < end; i++ {
+		cursor := "  "
+		style := optionStyle
+		if i == choice {
+			cursor = "> "
+			style = selectedOptionStyle
+		}
+		s.WriteString(style.Render(cursor+lines[i]) + "\n")
+	}
+
+	if totalPages > 1 {
+		s.WriteString("\n")
+		s.WriteString(fmt.Sprintf("Page %d of %d | ", page+1, totalPages))
+		if page > 0 {
+			s.WriteString("<-- Previous (h) ")
+		}
+		if page < totalPages-1 {
+			s.WriteString("Next (l) -->")
+		}
+	}
+}
+
+func downloadSpinner() string {
+	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+	frame := time.Now().UnixNano() / 100000000 % int64(len(frames))
+	return frames[frame]
 }
 
 func fixedCol(value string, width int) string {

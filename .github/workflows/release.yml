@@ -1,0 +1,75 @@
+name: Release
+
+# Triggered when a version tag is pushed, e.g. `git tag v1.0.0 && git push origin v1.0.0`.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Build and bundle per-OS archives
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          version="${GITHUB_REF_NAME}"
+
+          # target -> standalone yt-dlp asset to bundle into bin/.
+          # macOS uses the universal2 build for both amd64 and arm64.
+          declare -A ytdlp_asset=(
+            [linux/amd64]="yt-dlp_linux"
+            [linux/arm64]="yt-dlp_linux_aarch64"
+            [windows/amd64]="yt-dlp.exe"
+            [darwin/amd64]="yt-dlp_macos"
+            [darwin/arm64]="yt-dlp_macos"
+          )
+
+          for target in "${!ytdlp_asset[@]}"; do
+            goos="${target%/*}"
+            goarch="${target#*/}"
+            stage="bubly-${version}-${goos}-${goarch}"
+            mkdir -p "${stage}/bin"
+
+            bin_name="bubly"
+            ytdlp_name="yt-dlp"
+            if [ "$goos" = "windows" ]; then
+              bin_name="bubly.exe"
+              ytdlp_name="yt-dlp.exe"
+            fi
+
+            echo "Building ${stage}/${bin_name}"
+            GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 \
+              go build -trimpath -ldflags "-s -w" -o "${stage}/${bin_name}" main.go
+
+            echo "Bundling yt-dlp (${ytdlp_asset[$target]})"
+            curl -fL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/${ytdlp_asset[$target]}" \
+              -o "${stage}/bin/${ytdlp_name}"
+            chmod +x "${stage}/bin/${ytdlp_name}"
+
+            if [ "$goos" = "windows" ]; then
+              zip -r "dist/${stage}.zip" "${stage}" >/dev/null
+            else
+              tar -czf "dist/${stage}.tar.gz" "${stage}"
+            fi
+          done
+
+          ls -la dist
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
